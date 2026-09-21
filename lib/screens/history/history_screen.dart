@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../models/transaction_model.dart';
 import '../transaction/edit_transaction_screen.dart';
 import '../../controllers/transaction_controller.dart';
+<<<<<<< HEAD
 import '../../utils/currency_formatter.dart';
+=======
+>>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -254,6 +257,17 @@ class _HistoryScreenState
   }
 
   // ==========================================
+<<<<<<< HEAD
+=======
+  // FORMAT RUPIAH
+  // ==========================================
+
+  String formatRupiah(double amount) {
+    return 'Rp ${amount.toStringAsFixed(0)}';
+  }
+
+  // ==========================================
+>>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
   // RINGKASAN KATEGORI
   // ==========================================
 
