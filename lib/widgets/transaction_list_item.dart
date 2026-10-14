@@ -17,13 +17,10 @@ class TransactionListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isIncome =
-        transaction.type == 'income';
+    final isIncome = transaction.type == 'income';
 
     return Card(
-      margin: const EdgeInsets.symmetric(
-        vertical: 5,
-      ),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       child: ListTile(
         leading: CircleAvatar(
           child: Icon(
@@ -32,23 +29,17 @@ class TransactionListItem extends StatelessWidget {
                 : Icons.arrow_upward,
           ),
         ),
-
         title: Text(
-          transaction.category?.name ??
-              'Tanpa Kategori',
+          transaction.category?.name ?? 'Tanpa Kategori',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),
-
         subtitle: Text(
-          transaction.description
-                      ?.isNotEmpty ==
-                  true
+          transaction.description?.isNotEmpty == true
               ? transaction.description!
               : 'Tidak ada keterangan',
         ),
-
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -59,7 +50,6 @@ class TransactionListItem extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
@@ -81,7 +71,6 @@ class TransactionListItem extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 const PopupMenuItem(
                   value: 'delete',
                   child: Row(

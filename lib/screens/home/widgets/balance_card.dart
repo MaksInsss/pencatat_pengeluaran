@@ -23,11 +23,11 @@ class BalanceCard extends StatelessWidget {
               'Saldo Saat Ini',
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
             Text(
               formatRupiah(balance),

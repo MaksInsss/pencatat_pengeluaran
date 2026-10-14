@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../models/transaction_model.dart';
-import '../transaction/edit_transaction_screen.dart';
 import '../../controllers/transaction_controller.dart';
-<<<<<<< HEAD
-import '../../utils/currency_formatter.dart';
-=======
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+import '../../models/transaction_model.dart';
+import '../../widgets/summary_card.dart';
+import '../../widgets/transaction_list_item.dart';
+import '../transaction/edit_transaction_screen.dart';
+import 'widgets/category_summary_card.dart';
+import 'widgets/month_selector.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({
+    super.key,
+  });
 
   @override
   State<HistoryScreen> createState() =>
@@ -18,25 +20,37 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState
     extends State<HistoryScreen> {
+  // =========================================================
+  // CONTROLLER
+  // =========================================================
+
+  final TransactionController controller =
+      TransactionController();
+
+  // =========================================================
+  // DATA
+  // =========================================================
+
   List<TransactionModel> transactions = [];
 
   DateTime selectedMonth = DateTime.now();
 
   bool isLoading = true;
 
-  final TransactionController
-    transactionController =
-    TransactionController();
+  // =========================================================
+  // INIT
+  // =========================================================
 
   @override
   void initState() {
     super.initState();
+
     loadTransactions();
   }
 
-  // ==========================================
+  // =========================================================
   // LOAD TRANSACTIONS
-  // ==========================================
+  // =========================================================
 
   Future<void> loadTransactions() async {
     setState(() {
@@ -44,33 +58,31 @@ class _HistoryScreenState
     });
 
     try {
-      final result =
-          await transactionController
-              .getMonthlyTransactions(
+      final data =
+          await controller.getMonthlyTransactions(
         year: selectedMonth.year,
         month: selectedMonth.month,
       );
 
-      result.sort(
+      // Urutkan transaksi berdasarkan nominal
+      // dari terbesar ke terkecil.
+      data.sort(
         (a, b) =>
             b.amount.compareTo(a.amount),
       );
 
-      if (!mounted) return;
-
       setState(() {
-        transactions = result;
+        transactions = data;
         isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
-
       setState(() {
         isLoading = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Gagal mengambil riwayat: $e',
@@ -80,12 +92,14 @@ class _HistoryScreenState
     }
   }
 
-  // ==========================================
-  // HAPUS TRANSAKSI
-  // ==========================================
+  // =========================================================
+  // DELETE TRANSACTION
+  // =========================================================
 
-  Future<void> deleteTransaction(int id) async {
-    final confirmed =
+  Future<void> deleteTransaction(
+    int id,
+  ) async {
+    final confirm =
         await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -108,7 +122,7 @@ class _HistoryScreenState
                 'Batal',
               ),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () {
                 Navigator.pop(
                   context,
@@ -124,12 +138,12 @@ class _HistoryScreenState
       },
     );
 
-    if (confirmed != true) {
+    if (confirm != true) {
       return;
     }
 
     try {
-      await transactionController.deleteTransaction(id);
+      await controller.deleteTransaction(id);
 
       if (!mounted) return;
 
@@ -155,9 +169,9 @@ class _HistoryScreenState
     }
   }
 
-  // ==========================================
+  // =========================================================
   // TOTAL PEMASUKAN
-  // ==========================================
+  // =========================================================
 
   double get totalIncome {
     return transactions
@@ -172,9 +186,9 @@ class _HistoryScreenState
         );
   }
 
-  // ==========================================
+  // =========================================================
   // TOTAL PENGELUARAN
-  // ==========================================
+  // =========================================================
 
   double get totalExpense {
     return transactions
@@ -189,9 +203,9 @@ class _HistoryScreenState
         );
   }
 
-  // ==========================================
+  // =========================================================
   // NAMA BULAN
-  // ==========================================
+  // =========================================================
 
   String monthName(int month) {
     const months = [
@@ -212,9 +226,9 @@ class _HistoryScreenState
     return months[month - 1];
   }
 
-  // ==========================================
+  // =========================================================
   // BULAN SEBELUMNYA
-  // ==========================================
+  // =========================================================
 
   void previousMonth() {
     setState(() {
@@ -227,9 +241,9 @@ class _HistoryScreenState
     loadTransactions();
   }
 
-  // ==========================================
+  // =========================================================
   // BULAN BERIKUTNYA
-  // ==========================================
+  // =========================================================
 
   void nextMonth() {
     final now = DateTime.now();
@@ -239,13 +253,11 @@ class _HistoryScreenState
       selectedMonth.month + 1,
     );
 
-    // Jangan bisa melihat bulan masa depan
-    if (nextMonth.isAfter(
-      DateTime(
-        now.year,
-        now.month,
-      ),
-    )) {
+    // Mencegah pengguna memilih
+    // bulan yang belum terjadi.
+    if (nextMonth.year > now.year ||
+        (nextMonth.year == now.year &&
+            nextMonth.month > now.month)) {
       return;
     }
 
@@ -256,20 +268,9 @@ class _HistoryScreenState
     loadTransactions();
   }
 
-  // ==========================================
-<<<<<<< HEAD
-=======
-  // FORMAT RUPIAH
-  // ==========================================
-
-  String formatRupiah(double amount) {
-    return 'Rp ${amount.toStringAsFixed(0)}';
-  }
-
-  // ==========================================
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
-  // RINGKASAN KATEGORI
-  // ==========================================
+  // =========================================================
+  // CATEGORY SUMMARY
+  // =========================================================
 
   Map<String, double> getCategorySummary(
     String type,
@@ -290,86 +291,46 @@ class _HistoryScreenState
               transaction.amount;
     }
 
+    // Urutkan kategori berdasarkan
+    // nominal terbesar ke terkecil.
+    final sortedEntries =
+        summary.entries.toList()
+          ..sort(
+            (a, b) =>
+                b.value.compareTo(a.value),
+          );
+
     return Map.fromEntries(
-      summary.entries.toList()
-        ..sort(
-          (a, b) =>
-              b.value.compareTo(a.value),
-        ),
+      sortedEntries,
     );
   }
 
-  // ==========================================
-  // BUILD CATEGORY SUMMARY
-  // ==========================================
+  // =========================================================
+  // EDIT TRANSACTION
+  // =========================================================
 
-  Widget buildCategorySummary(
-    String title,
-    String type,
-  ) {
-    final summary =
-        getCategorySummary(type);
-
-    if (summary.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight:
-                    FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            ...summary.entries.map(
-              (entry) {
-                return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(
-                    vertical: 6,
-                  ),
-                  child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment
-                            .spaceBetween,
-                    children: [
-                      Text(
-                        entry.key,
-                      ),
-                      Text(
-                        formatRupiah(
-                          entry.value,
-                        ),
-                        style:
-                            const TextStyle(
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+  Future<void> editTransaction(
+    TransactionModel transaction,
+  ) async {
+    final result =
+        await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            EditTransactionScreen(
+          transaction: transaction,
         ),
       ),
     );
+
+    if (result == true) {
+      loadTransactions();
+    }
   }
 
-  // ==========================================
+  // =========================================================
   // BUILD
-  // ==========================================
+  // =========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -391,151 +352,82 @@ class _HistoryScreenState
                 padding:
                     const EdgeInsets.all(16),
                 children: [
-                  // ==================================
-                  // NAVIGASI BULAN
-                  // ==================================
+                  // =================================================
+                  // MONTH SELECTOR
+                  // =================================================
 
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment
-                            .spaceBetween,
-                    children: [
-                      IconButton(
-                        onPressed:
-                            previousMonth,
-                        icon: const Icon(
-                          Icons.chevron_left,
-                        ),
-                      ),
-
-                      Text(
+                  MonthSelector(
+                    monthText:
                         '${monthName(selectedMonth.month)} '
                         '${selectedMonth.year}',
-                        style:
-                            const TextStyle(
-                          fontSize: 18,
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
-                      ),
-
-                      IconButton(
-                        onPressed:
-                            nextMonth,
-                        icon: const Icon(
-                          Icons.chevron_right,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // ==================================
-                  // TOTAL PEMASUKAN & PENGELUARAN
-                  // ==================================
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding:
-                                const EdgeInsets
-                                    .all(16),
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment
-                                      .start,
-                              children: [
-                                const Text(
-                                  'Total Pemasukan',
-                                ),
-                                const SizedBox(
-                                  height: 8,
-                                ),
-                                Text(
-                                  formatRupiah(
-                                    totalIncome,
-                                  ),
-                                  style:
-                                      const TextStyle(
-                                    fontWeight:
-                                        FontWeight
-                                            .bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding:
-                                const EdgeInsets
-                                    .all(16),
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment
-                                      .start,
-                              children: [
-                                const Text(
-                                  'Total Pengeluaran',
-                                ),
-                                const SizedBox(
-                                  height: 8,
-                                ),
-                                Text(
-                                  formatRupiah(
-                                    totalExpense,
-                                  ),
-                                  style:
-                                      const TextStyle(
-                                    fontWeight:
-                                        FontWeight
-                                            .bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // ==================================
-                  // RINGKASAN PEMASUKAN
-                  // ==================================
-
-                  buildCategorySummary(
-                    'Ringkasan Pemasukan',
-                    'income',
+                    onPrevious:
+                        previousMonth,
+                    onNext: nextMonth,
                   ),
 
                   const SizedBox(height: 12),
 
-                  // ==================================
-                  // RINGKASAN PENGELUARAN
-                  // ==================================
+                  // =================================================
+                  // TOTAL PEMASUKAN & PENGELUARAN
+                  // =================================================
 
-                  buildCategorySummary(
-                    'Ringkasan Pengeluaran',
-                    'expense',
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SummaryCard(
+                          title:
+                              'Total Pemasukan',
+                          amount:
+                              totalIncome,
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: SummaryCard(
+                          title:
+                              'Total Pengeluaran',
+                          amount:
+                              totalExpense,
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                  // ==================================
+                  // =================================================
+                  // RINGKASAN PEMASUKAN
+                  // =================================================
+
+                  CategorySummaryCard(
+                    title:
+                        'Ringkasan Pemasukan Berdasarkan Kategori',
+                    summary:
+                        getCategorySummary(
+                      'income',
+                    ),
+                  ),
+
+                  // =================================================
+                  // RINGKASAN PENGELUARAN
+                  // =================================================
+
+                  CategorySummaryCard(
+                    title:
+                        'Ringkasan Pengeluaran Berdasarkan Kategori',
+                    summary:
+                        getCategorySummary(
+                      'expense',
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // =================================================
                   // JUDUL TRANSAKSI
-                  // ==================================
+                  // =================================================
 
                   const Text(
                     'Transaksi Bulan Ini',
@@ -548,190 +440,54 @@ class _HistoryScreenState
 
                   const SizedBox(height: 8),
 
-                  // ==================================
-                  // TRANSAKSI
-                  // ==================================
+                  // =================================================
+                  // JIKA BELUM ADA TRANSAKSI
+                  // =================================================
 
                   if (transactions.isEmpty)
                     const Padding(
                       padding:
-                          EdgeInsets.symmetric(
-                        vertical: 40,
-                      ),
+                          EdgeInsets.all(20),
                       child: Center(
                         child: Text(
-                          'Belum ada transaksi pada bulan ini',
+                          'Belum ada transaksi pada bulan ini.',
                         ),
                       ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics:
-                          const NeverScrollableScrollPhysics(),
-                      itemCount:
-                          transactions.length,
-                      itemBuilder:
-                          (context, index) {
-                        final transaction =
-                            transactions[index];
-
-                        final isIncome =
-                            transaction.type ==
-                                'income';
-
-                        return Card(
-                          margin:
-                              const EdgeInsets
-                                  .symmetric(
-                            vertical: 5,
-                          ),
-                          child: ListTile(
-                            leading:
-                                CircleAvatar(
-                              child: Icon(
-                                isIncome
-                                    ? Icons
-                                        .arrow_downward
-                                    : Icons
-                                        .arrow_upward,
-                              ),
-                            ),
-
-                            title: Text(
-                              transaction
-                                      .category
-                                      ?.name ??
-                                  'Tanpa Kategori',
-                              style:
-                                  const TextStyle(
-                                fontWeight:
-                                    FontWeight
-                                        .bold,
-                              ),
-                            ),
-
-                            subtitle: Text(
-                              transaction
-                                          .description
-                                          ?.isNotEmpty ==
-                                      true
-                                  ? transaction
-                                      .description!
-                                  : 'Tidak ada keterangan',
-                            ),
-
-                            trailing:
-                                Row(
-                              mainAxisSize:
-                                  MainAxisSize
-                                      .min,
-                              children: [
-                                Text(
-                                  '${isIncome ? '+' : '-'} '
-                                  '${formatRupiah(
-                                    transaction
-                                        .amount,
-                                  )}',
-                                  style:
-                                      const TextStyle(
-                                    fontWeight:
-                                        FontWeight
-                                            .bold,
-                                  ),
-                                ),
-
-                                // ==================================
-                                // MENU EDIT & HAPUS
-                                // ==================================
-
-                                PopupMenuButton<
-                                    String>(
-                                  onSelected:
-                                      (value) async {
-                                    // EDIT
-                                    if (value ==
-                                        'edit') {
-                                      final result =
-                                          await Navigator
-                                              .push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) =>
-                                                  EditTransactionScreen(
-                                            transaction:
-                                                transaction,
-                                          ),
-                                        ),
-                                      );
-
-                                      if (result ==
-                                          true) {
-                                        await loadTransactions();
-                                      }
-                                    }
-
-                                    // HAPUS
-                                    if (value ==
-                                        'delete') {
-                                      await deleteTransaction(
-                                        transaction
-                                            .id,
-                                      );
-                                    }
-                                  },
-
-                                  itemBuilder:
-                                      (context) =>
-                                          [
-                                    const PopupMenuItem(
-                                      value:
-                                          'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons
-                                                .edit,
-                                          ),
-                                          SizedBox(
-                                            width:
-                                                8,
-                                          ),
-                                          Text(
-                                            'Edit',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    const PopupMenuItem(
-                                      value:
-                                          'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons
-                                                .delete,
-                                          ),
-                                          SizedBox(
-                                            width:
-                                                8,
-                                          ),
-                                          Text(
-                                            'Hapus',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
                     ),
+
+                  // =================================================
+                  // LIST TRANSAKSI
+                  // =================================================
+
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics:
+                        const NeverScrollableScrollPhysics(),
+                    itemCount:
+                        transactions.length,
+                    itemBuilder:
+                        (context, index) {
+                      final transaction =
+                          transactions[index];
+
+                      return TransactionListItem(
+                        transaction:
+                            transaction,
+
+                        onEdit: () {
+                          editTransaction(
+                            transaction,
+                          );
+                        },
+
+                        onDelete: () {
+                          deleteTransaction(
+                            transaction.id,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

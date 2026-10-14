@@ -1,96 +1,112 @@
 import 'package:flutter/material.dart';
 
-<<<<<<< HEAD
 import '../../controllers/transaction_controller.dart';
-=======
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
 import '../../models/transaction_model.dart';
+import '../../widgets/summary_card.dart';
+import '../../widgets/transaction_list_item.dart';
+import '../../controllers/profile_controller.dart';
+import '../../models/user_model.dart';
 import '../history/history_screen.dart';
 import '../transaction/add_transaction_screen.dart';
 import '../transaction/edit_transaction_screen.dart';
-<<<<<<< HEAD
+import '../profile/profile_screen.dart';
 import 'widgets/balance_card.dart';
-import 'widgets/today_summary_card.dart';
-import '../../widgets/transaction_list_item.dart';
-=======
-import '../../controllers/transaction_controller.dart';
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+  });
 
   @override
   State<HomeScreen> createState() =>
       _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-<<<<<<< HEAD
-  final TransactionController
-      transactionController =
+class _HomeScreenState
+    extends State<HomeScreen> {
+  // =========================================================
+  // CONTROLLER
+  // =========================================================
+
+  final TransactionController controller =
       TransactionController();
 
+  // =========================================================
+  // DATA
+  // =========================================================
+
+  final ProfileController profileController = ProfileController();
+  UserModel? currentUser;
+  bool isProfileLoading = true; 
+
   List<TransactionModel> transactions = [];
 
-=======
-  // =========================
-  // DATA TRANSAKSI
-  // =========================
-
-  List<TransactionModel> transactions = [];
-
-  // =========================
-  // DATA RINGKASAN
-  // =========================
-
-  final TransactionController
-    transactionController =
-    TransactionController();
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
   double balance = 0;
   double totalIncome = 0;
   double totalExpense = 0;
 
   bool isLoading = true;
 
-<<<<<<< HEAD
-=======
-  // =========================
+  // =========================================================
   // INIT
-  // =========================
+  // =========================================================
 
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
   @override
   void initState() {
     super.initState();
 
     loadTransactions();
+    loadCurrentUser();
   }
 
-<<<<<<< HEAD
-=======
-  // =========================
-  // LOAD DATA
-  // =========================
+  // =========================================================
+  // LOAD DATA HOME
+  // =========================================================
 
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+  Future<void> loadCurrentUser() async {
+    try {
+      final user = await profileController.getCurrentUser();
+
+      if (!mounted) return;
+
+      setState(() {
+        currentUser = user;
+        isProfileLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isProfileLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengambil profil: $e'),
+        ),
+      );
+    }
+  }
+
+
   Future<void> loadTransactions() async {
-    setState(() {
-      isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
 
     try {
-      final summary =
-          await transactionController.getSummary();
+      final results = await Future.wait([
+        controller.getSummary(),
+        controller.getTodayTransactions(),
+      ]);
 
-<<<<<<< HEAD
+      final summary =
+          results[0] as Map<String, dynamic>;
+
       final todayTransactions =
-=======
-      final todayResult =
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
-          await transactionController
-              .getTodayTransactions();
+          results[1] as List<TransactionModel>;
 
       if (!mounted) return;
 
@@ -107,11 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
           summary['today_expense'].toString(),
         );
 
-<<<<<<< HEAD
         transactions = todayTransactions;
-=======
-        transactions = todayResult;
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
 
         isLoading = false;
       });
@@ -122,61 +134,34 @@ class _HomeScreenState extends State<HomeScreen> {
         isLoading = false;
       });
 
-<<<<<<< HEAD
       ScaffoldMessenger.of(context).showSnackBar(
-=======
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
         SnackBar(
           content: Text(
-            'Gagal mengambil transaksi: $e',
+            'Gagal mengambil data: $e',
           ),
         ),
       );
     }
   }
 
-<<<<<<< HEAD
-  Future<void> deleteTransaction(int id) async {
-    final confirmed = await showDialog<bool>(
-=======
-  // =========================
-  // HAPUS TRANSAKSI
-  // =========================
+  // =========================================================
+  // DELETE TRANSACTION
+  // =========================================================
 
-  Future<void> deleteTransaction(int id) async {
-    final confirmed =
+  Future<void> deleteTransaction(
+    int id,
+  ) async {
+    final confirm =
         await showDialog<bool>(
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text(
             'Hapus Transaksi',
           ),
-<<<<<<< HEAD
           content: const Text(
             'Apakah Anda yakin ingin menghapus transaksi ini?',
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-              child: const Text('Hapus'),
-=======
-
-          content: const Text(
-            'Apakah Anda yakin ingin menghapus transaksi ini?',
-          ),
-
           actions: [
             TextButton(
               onPressed: () {
@@ -185,47 +170,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   false,
                 );
               },
-
               child: const Text(
                 'Batal',
               ),
             ),
-
-            ElevatedButton(
+            TextButton(
               onPressed: () {
                 Navigator.pop(
                   context,
                   true,
                 );
               },
-
               child: const Text(
                 'Hapus',
               ),
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
             ),
           ],
         );
       },
     );
 
-<<<<<<< HEAD
-=======
-    // Jika user memilih Batal
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
-    if (confirmed != true) {
+    if (confirm != true) {
       return;
     }
 
     try {
-<<<<<<< HEAD
-      await transactionController
-          .deleteTransaction(id);
+      await controller.deleteTransaction(id);
 
-=======
-      // Hapus dari Laravel
-      await transactionController.deleteTransaction(id);
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -236,10 +207,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-<<<<<<< HEAD
-=======
-      // Refresh Home
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
       await loadTransactions();
     } catch (e) {
       if (!mounted) return;
@@ -254,7 +221,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-<<<<<<< HEAD
+  // =========================================================
+  // BUKA HALAMAN RIWAYAT
+  // =========================================================
+
   Future<void> openHistory() async {
     await Navigator.push(
       context,
@@ -264,11 +234,18 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    await loadTransactions();
+    // Refresh Home ketika kembali
+    // dari halaman History.
+    loadTransactions();
   }
 
+  // =========================================================
+  // BUKA HALAMAN TAMBAH TRANSAKSI
+  // =========================================================
+
   Future<void> openAddTransaction() async {
-    final result = await Navigator.push(
+    final result =
+        await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
@@ -277,14 +254,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (result == true) {
-      await loadTransactions();
+      loadTransactions();
     }
   }
 
-  Future<void> openEditTransaction(
+  // =========================================================
+  // BUKA HALAMAN EDIT TRANSAKSI
+  // =========================================================
+
+  Future<void> editTransaction(
     TransactionModel transaction,
   ) async {
-    final result = await Navigator.push(
+    final result =
+        await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
@@ -295,259 +277,147 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (result == true) {
-      await loadTransactions();
+      loadTransactions();
     }
   }
-=======
-  // =========================
-  // FORMAT RUPIAH
-  // =========================
 
-  String formatRupiah(double amount) {
-    return 'Rp ${amount.toStringAsFixed(0)}';
+  Future<void> openProfile() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProfileScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    await loadCurrentUser();
   }
 
-  // =========================
+  // =========================================================
   // BUILD
-  // =========================
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+  // =========================================================
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-<<<<<<< HEAD
-=======
-      // =========================
-      // APP BAR
-      // =========================
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+    return Scaffold(      
       appBar: AppBar(
-        title: const Text(
-          'Keuangan Saya',
+        title: Row(
+          children: [        
+            InkWell(
+              onTap: openProfile,
+              borderRadius: BorderRadius.circular(24),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: ClipOval(
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: currentUser?.profilePhotoUrl != null &&
+                            currentUser!.profilePhotoUrl!.isNotEmpty
+                        ? Image.network(
+                            currentUser!.profilePhotoUrl!,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            webHtmlElementStrategy:
+                                WebHtmlElementStrategy.prefer,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(Icons.person, size: 24),
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: Icon(Icons.person, size: 24),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isProfileLoading
+                    ? 'Laporan Keuangan'
+                    : 'Laporan Keuangan ${currentUser?.name ?? ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
 
-<<<<<<< HEAD
-      body: RefreshIndicator(
-        onRefresh: loadTransactions,
-=======
-      // =========================
-      // BODY
-      // =========================
 
-      body: RefreshIndicator(
-        onRefresh: loadTransactions,
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
-        child: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
-            : ListView(
-                padding: const EdgeInsets.all(16),
-<<<<<<< HEAD
+      body: isLoading
+          ? const Center(
+              child:
+                  CircularProgressIndicator(),
+            )
+          : RefreshIndicator(
+              onRefresh: loadTransactions,
+              child: ListView(
+                padding:
+                    const EdgeInsets.all(16),
                 children: [
+                  // =================================================
+                  // SALDO
+                  // =================================================
+
                   BalanceCard(
                     balance: balance,
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+
+                  // =================================================
+                  // PEMASUKAN & PENGELUARAN HARI INI
+                  // =================================================
 
                   Row(
                     children: [
-                      TodaySummaryCard(
-                        title:
-                            'Pemasukan Hari Ini',
-                        amount: totalIncome,
-                        icon:
-                            Icons.arrow_downward,
-                      ),
-
-                      TodaySummaryCard(
-                        title:
-                            'Pengeluaran Hari Ini',
-                        amount: totalExpense,
-                        icon:
-                            Icons.arrow_upward,
-=======
-
-                children: [
-                  // =========================
-                  // SALDO
-                  // =========================
-
-                  Card(
-                    child: Padding(
-                      padding:
-                          const EdgeInsets.all(20),
-
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-
-                        children: [
-                          const Text(
-                            'Saldo Saat Ini',
-
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight:
-                                  FontWeight.w500,
-                            ),
-                          ),
-
-                          const SizedBox(
-                            height: 8,
-                          ),
-
-                          Text(
-                            formatRupiah(balance),
-
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight:
-                                  FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(
-                    height: 16,
-                  ),
-
-                  // =========================
-                  // PEMASUKAN & PENGELUARAN
-                  // =========================
-
-                  Row(
-                    children: [
-                      // PEMASUKAN
                       Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.all(
-                              16,
-                            ),
-
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-
-                              children: [
-                                const Icon(
-                                  Icons.arrow_downward,
-                                ),
-
-                                const SizedBox(
-                                  height: 8,
-                                ),
-
-                                const Text(
-                                  'Pemasukan Hari Ini',
-                                ),
-
-                                const SizedBox(
-                                  height: 4,
-                                ),
-
-                                Text(
-                                  formatRupiah(
-                                    totalIncome,
-                                  ),
-
-                                  style:
-                                      const TextStyle(
-                                    fontWeight:
-                                        FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        child: SummaryCard(
+                          title:
+                              'Pemasukan Hari Ini',
+                          amount:
+                              totalIncome,
+                          icon:
+                              Icons.arrow_downward,
                         ),
                       ),
 
-                      // PENGELUARAN
+                      const SizedBox(width: 10),
+
                       Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.all(
-                              16,
-                            ),
-
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-
-                              children: [
-                                const Icon(
-                                  Icons.arrow_upward,
-                                ),
-
-                                const SizedBox(
-                                  height: 8,
-                                ),
-
-                                const Text(
-                                  'Pengeluaran Hari Ini',
-                                ),
-
-                                const SizedBox(
-                                  height: 4,
-                                ),
-
-                                Text(
-                                  formatRupiah(
-                                    totalExpense,
-                                  ),
-
-                                  style:
-                                      const TextStyle(
-                                    fontWeight:
-                                        FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        child: SummaryCard(
+                          title:
+                              'Pengeluaran Hari Ini',
+                          amount:
+                              totalExpense,
+                          icon:
+                              Icons.arrow_upward,
                         ),
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
                       ),
                     ],
                   ),
 
-<<<<<<< HEAD
-                  const SizedBox(height: 24),
-=======
-                  const SizedBox(
-                    height: 24,
-                  ),
+                  const SizedBox(height: 20),
 
-                  // =========================
-                  // JUDUL TRANSAKSI
-                  // =========================
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+                  // =================================================
+                  // JUDUL TRANSAKSI + LIHAT RIWAYAT
+                  // =================================================
 
                   Row(
                     mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-<<<<<<< HEAD
+                        MainAxisAlignment
+                            .spaceBetween,
                     children: [
                       const Text(
                         'Transaksi Hari Ini',
-=======
-
-                    children: [
-                      const Text(
-                        'Transaksi Hari Ini',
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight:
@@ -556,22 +426,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
 
                       TextButton(
-<<<<<<< HEAD
-                        onPressed: openHistory,
-=======
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const HistoryScreen(),
-                            ),
-                          );
-
-                          await loadTransactions();
-                        },
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+                        onPressed:
+                            openHistory,
                         child: const Text(
                           'Lihat Riwayat',
                         ),
@@ -579,278 +435,71 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
 
-<<<<<<< HEAD
                   const SizedBox(height: 8),
-=======
-                  const SizedBox(
-                    height: 8,
-                  ),
 
-                  // =========================
-                  // TRANSAKSI
-                  // =========================
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+                  // =================================================
+                  // JIKA BELUM ADA TRANSAKSI
+                  // =================================================
 
                   if (transactions.isEmpty)
                     const Padding(
                       padding:
-                          EdgeInsets.symmetric(
-                        vertical: 40,
-                      ),
-<<<<<<< HEAD
-=======
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
+                          EdgeInsets.all(20),
                       child: Center(
                         child: Text(
-                          'Belum ada transaksi hari ini',
+                          'Belum ada transaksi hari ini.',
                         ),
                       ),
-                    )
-<<<<<<< HEAD
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics:
-                          const NeverScrollableScrollPhysics(),
-                      itemCount:
-                          transactions.length,
-=======
-
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-
-                      physics:
-                          const NeverScrollableScrollPhysics(),
-
-                      itemCount:
-                          transactions.length,
-
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
-                      itemBuilder:
-                          (context, index) {
-                        final transaction =
-                            transactions[index];
-
-<<<<<<< HEAD
-                        return TransactionListItem(
-                          transaction:
-                              transaction,
-                          onEdit: () {
-                            openEditTransaction(
-                              transaction,
-                            );
-                          },
-                          onDelete: () {
-                            deleteTransaction(
-                              transaction.id,
-                            );
-                          },
-=======
-                        final isIncome =
-                            transaction.type ==
-                                'income';
-
-                        return Card(
-                          margin:
-                              const EdgeInsets
-                                  .symmetric(
-                            vertical: 5,
-                          ),
-
-                          child: ListTile(
-                            // =========================
-                            // ICON
-                            // =========================
-
-                            leading:
-                                CircleAvatar(
-                              child: Icon(
-                                isIncome
-                                    ? Icons
-                                        .arrow_downward
-                                    : Icons
-                                        .arrow_upward,
-                              ),
-                            ),
-
-                            // =========================
-                            // KATEGORI
-                            // =========================
-
-                            title: Text(
-                              transaction.category?.name ??
-                                  'Tanpa Kategori',
-
-                              style: const TextStyle(
-                                fontWeight:
-                                    FontWeight.bold,
-                              ),
-                            ),
-
-                            // =========================
-                            // KETERANGAN
-                            // =========================
-
-                            subtitle: Text(
-                              transaction
-                                          .description
-                                          ?.isNotEmpty ==
-                                      true
-                                  ? transaction
-                                      .description!
-                                  : 'Tidak ada keterangan',
-                            ),
-
-                            // =========================
-                            // NOMINAL + MENU
-                            // =========================
-
-                            trailing: Row(
-                              mainAxisSize:
-                                  MainAxisSize.min,
-
-                              children: [
-                                Text(
-                                  '${isIncome ? '+' : '-'} '
-                                  '${formatRupiah(
-                                    transaction.amount,
-                                  )}',
-
-                                  style:
-                                      const TextStyle(
-                                    fontWeight:
-                                        FontWeight.bold,
-                                  ),
-                                ),
-
-                                PopupMenuButton<String>(
-                                  onSelected:
-                                      (value) async {
-                                    // =========================
-                                    // EDIT
-                                    // =========================
-
-                                    if (value ==
-                                        'edit') {
-                                      final result =
-                                          await Navigator
-                                              .push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) =>
-                                                  EditTransactionScreen(
-                                            transaction:
-                                                transaction,
-                                          ),
-                                        ),
-                                      );
-
-                                      if (result ==
-                                          true) {
-                                        await loadTransactions();
-                                      }
-                                    }
-
-                                    // =========================
-                                    // HAPUS
-                                    // =========================
-
-                                    if (value ==
-                                        'delete') {
-                                      await deleteTransaction(
-                                        transaction.id,
-                                      );
-                                    }
-                                  },
-
-                                  itemBuilder:
-                                      (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.edit,
-                                          ),
-
-                                          SizedBox(
-                                            width: 8,
-                                          ),
-
-                                          Text(
-                                            'Edit',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    const PopupMenuItem(
-                                      value: 'delete',
-
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.delete,
-                                          ),
-
-                                          SizedBox(
-                                            width: 8,
-                                          ),
-
-                                          Text(
-                                            'Hapus',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
-                        );
-                      },
                     ),
+
+                  // =================================================
+                  // LIST TRANSAKSI
+                  // =================================================
+
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics:
+                        const NeverScrollableScrollPhysics(),
+                    itemCount:
+                        transactions.length,
+                    itemBuilder:
+                        (context, index) {
+                      final transaction =
+                          transactions[index];
+
+                      return TransactionListItem(
+                        transaction:
+                            transaction,
+
+                        onEdit: () {
+                          editTransaction(
+                            transaction,
+                          );
+                        },
+
+                        onDelete: () {
+                          deleteTransaction(
+                            transaction.id,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
-      ),
-
-<<<<<<< HEAD
-      floatingActionButton:
-          FloatingActionButton(
-        onPressed: openAddTransaction,
-        child: const Icon(Icons.add),
-=======
-      // =========================
-      // TOMBOL TAMBAH
-      // =========================
-
-      floatingActionButton:
-          FloatingActionButton(
-        onPressed: () async {
-          final result =
-              await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  const AddTransactionScreen(),
             ),
-          );
 
-          if (result == true) {
-            await loadTransactions();
-          }
-        },
+      // =========================================================
+      // FAB TAMBAH TRANSAKSI
+      // =========================================================
 
+      floatingActionButton:
+          FloatingActionButton(
+        onPressed:
+            openAddTransaction,
         child: const Icon(
           Icons.add,
         ),
->>>>>>> 363012fefb07bd68b280249a7d53f521ee95e565
       ),
     );
   }
