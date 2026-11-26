@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../controllers/auth_controller.dart';
+import '../../services/api_service.dart';
+import 'verify_code_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -33,7 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _register() async {
+    Future<void> _register() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -42,29 +44,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
     });
 
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
     try {
+      // Langkah 1: server mengirim kode ke email. Akun belum dibuat.
       await _authController.register(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        name: name,
+        email: email,
+        password: password,
       );
 
       if (!mounted) return;
 
-      // Registrasi berhasil dan token sudah tersimpan.
-      // Kembali ke halaman awal agar AuthGate memeriksa sesi.
-      Navigator.pushNamedAndRemoveUntil(
+      // Langkah 2: pengguna memasukkan kode dari email.
+      final verified = await Navigator.push<bool>(
         context,
-        '/',
-        (route) => false,
+        MaterialPageRoute(
+          builder: (_) => VerifyCodeScreen<bool>(
+            title: 'Verifikasi Email',
+            email: email,
+            submitLabel: 'Verifikasi & Daftar',
+            onVerify: (code) async {
+              // Berhasil = akun dibuat dan token sudah tersimpan.
+              await ApiService.verifyRegistration(email: email, code: code);
+              return true;
+            },
+            onResend: () async {
+              await ApiService.register(
+                name: name,
+                email: email,
+                password: password,
+              );
+            },
+          ),
+        ),
       );
+
+      if (!mounted) return;
+
+      if (verified == true) {
+        // AuthGate memeriksa token dan membuka Home.
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/',
+          (route) => false,
+        );
+      }
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_getErrorMessage(error)),
-        ),
+        SnackBar(content: Text(_getErrorMessage(error))),
       );
     } finally {
       if (mounted) {
@@ -76,15 +108,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String _getErrorMessage(Object error) {
-    final message = error.toString();
-
-    if (message.contains('422')) {
-      return 'Email sudah terdaftar atau data tidak valid.';
-    }
-
-    return message.replaceFirst('Exception: ', '');
+    return error.toString().replaceFirst('Exception: ', '');
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

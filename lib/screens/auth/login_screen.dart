@@ -175,7 +175,16 @@ class _LoginScreenState
                       return null;
                     },
                   ),
-
+                  
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/forgot-password');
+                      },
+                      child: const Text('Lupa password?'),
+                    ),
+                  ),
                   const SizedBox(height: 24),
 
                   SizedBox(

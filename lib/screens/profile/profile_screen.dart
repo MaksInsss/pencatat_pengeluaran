@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../controllers/profile_controller.dart';
 import '../../models/user_model.dart';
+import '../../services/api_service.dart';
+import '../auth/verify_code_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -75,39 +77,190 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final user = _user!;
+    final newName = _nameController.text.trim();
+    final newEmail = _emailController.text.trim();
+
+    final nameChanged = newName != user.name;
+    final emailChanged = newEmail.toLowerCase() != user.email.toLowerCase();
+
+    if (!nameChanged && !emailChanged) {
+      setState(() {
+        _isEditing = false;
+      });
+      return;
+    }
+
+    // Nama disimpan langsung. Email yang dikirim = email saat ini, karena
+    // server menolak perubahan email lewat endpoint ini.
+    if (nameChanged) {
+      setState(() {
+        _isSaving = true;
+      });
+
+      try {
+        final updatedUser = await _controller.updateProfile(
+          name: newName,
+          email: user.email,
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          _user = updatedUser;
+          _isSaving = false;
+        });
+      } catch (error) {
+        if (!mounted) return;
+
+        setState(() {
+          _isSaving = false;
+        });
+
+        _showMessage(
+          error.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
+        return;
+      }
+    }
+
+    // Email baru harus diverifikasi dengan kode.
+    if (emailChanged) {
+      await _startEmailChange(newEmail);
+      return;
+    }
+
     setState(() {
-      _isSaving = true;
+      _isEditing = false;
     });
 
-    try {
-      final updatedUser = await _controller.updateProfile(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-      );
+    _showMessage('Profil berhasil diperbarui.');
+  }
 
-      if (!mounted) return;
+  Future<String?> _askPassword() {
+    final controller = TextEditingController();
 
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        bool obscure = true;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Konfirmasi password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Masukkan password Anda untuk mengganti email.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    obscureText: obscure,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscure ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setDialogState(() {
+                            obscure = !obscure;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.pop(dialogContext, controller.text),
+                  child: const Text('Lanjut'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _startEmailChange(String newEmail) async {
+    final password = await _askPassword();
+
+    if (!mounted) return;
+
+    if (password == null || password.isEmpty) {
+      // Dibatalkan: kembalikan isian email ke email saat ini.
       setState(() {
-        _user = updatedUser;
-        _nameController.text = updatedUser.name;
-        _emailController.text = updatedUser.email;
-        _isEditing = false;
-        _isSaving = false;
+        _emailController.text = _user!.email;
       });
+      return;
+    }
 
-      _showMessage('Profil berhasil diperbarui.');
+    try {
+      await ApiService.requestEmailChange(
+        email: newEmail,
+        currentPassword: password,
+      );
     } catch (error) {
       if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
 
       _showMessage(
         error.toString().replaceFirst('Exception: ', ''),
         isError: true,
       );
+      return;
     }
+
+    if (!mounted) return;
+
+    final updatedUser = await Navigator.push<UserModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VerifyCodeScreen<UserModel>(
+          title: 'Verifikasi Email Baru',
+          email: newEmail,
+          onVerify: (code) => ApiService.confirmEmailChange(code: code),
+          onResend: () => ApiService.requestEmailChange(
+            email: newEmail,
+            currentPassword: password,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (updatedUser == null) {
+      // Pengguna keluar tanpa memasukkan kode: email tidak berubah.
+      setState(() {
+        _emailController.text = _user!.email;
+      });
+
+      _showMessage('Email belum diganti.');
+      return;
+    }
+
+    setState(() {
+      _user = updatedUser;
+      _nameController.text = updatedUser.name;
+      _emailController.text = updatedUser.email;
+      _isEditing = false;
+    });
+
+    _showMessage('Email berhasil diganti.');
   }
 
   
@@ -223,6 +376,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         isError: true,
       );
     }
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Keluar dari akun?'),
+          content: const Text('Anda perlu login lagi untuk melanjutkan.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    // Tidak melempar error: token lokal selalu dihapus walau server
+    // tidak terjangkau.
+    await ApiService.logout();
+
+    if (!mounted) return;
+
+    // AuthGate memeriksa token lagi dan menampilkan layar login.
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
   }
 
   void _showMessage(
@@ -471,7 +657,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 32),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.pushNamed(context, '/change-password');
+          },
+          icon: const Icon(Icons.lock_reset),
+          label: const Text('Ganti Password'),
+        ),
+
+        const SizedBox(height: 12),
+
+        OutlinedButton.icon(
+          onPressed: _logout,
+          icon: const Icon(Icons.logout),
+          label: const Text('Keluar'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+        ),
       ],
     );
   }
+
 }
